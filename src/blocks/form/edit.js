@@ -18,13 +18,14 @@ import { TEMPLATE_OPTIONS } from './layouts';
 /**
  * WordPress dependencies
  */
+import { __experimentalRegisterBlockPattern } from '@wordpress/blocks';
 import { __, sprintf } from '@wordpress/i18n';
 import { Component, Fragment } from '@wordpress/element';
 import { Button, PanelBody, TextControl, ExternalLink } from '@wordpress/components';
-import { InspectorControls, InnerBlocks } from '@wordpress/block-editor';
+import { InspectorControls, InnerBlocks, __experimentalBlockPatternPicker } from '@wordpress/block-editor';
 import { applyFilters } from '@wordpress/hooks';
 import { compose } from '@wordpress/compose';
-import { withSelect } from '@wordpress/data';
+import { withSelect, useSelect } from '@wordpress/data';
 
 /**
  * Get settings
@@ -329,7 +330,7 @@ class FormEdit extends Component {
 
 	supportsExperimentalProps() {
 		let isSupported = true;
-		if ( typeof InnerBlocks.prototype.shouldComponentUpdate === 'undefined' ) {
+		if ( typeof InnerBlocks.prototype.shouldComponentUpdate === 'undefined' || typeof __experimentalRegisterBlockPattern !== 'undefined' ) {
 			isSupported = false;
 		}
 		return isSupported;
@@ -344,6 +345,10 @@ class FormEdit extends Component {
 		);
 
 		const showTemplateSelector = this.props.innerBlockCount === 0;
+
+		if ( this.supportsExperimentalProps() ) {
+			wp.blocks.__experimentalRegisterBlockPattern( 'coblocks/row', { name: 'custom', label: 'Custom', isDefault: true, innerBlocks: [ [ 'core/column' ], [ 'core/column' ], [ 'core/column' ], [ 'core/column' ] ], icon: 'smiley' } );
+		}
 
 		return (
 			<Fragment>
@@ -409,7 +414,7 @@ class FormEdit extends Component {
 					</InspectorControls>
 				) }
 				<div className={ classes }>
-					<InnerBlocks
+					{ /* <InnerBlocks
 						__experimentalTemplateOptions={ TEMPLATE_OPTIONS }
 						__experimentalOnSelectTemplateOption={ ( chosenTemplate ) => {
 							if ( chosenTemplate === undefined ) {
@@ -423,7 +428,33 @@ class FormEdit extends Component {
 						renderAppender={ () => null }
 						templateInsertUpdatesSelection={ false }
 					/>
-					{ ! showTemplateSelector && <SubmitButton { ...this.props } /> }
+					{ ! showTemplateSelector && <SubmitButton { ...this.props } /> } */ }
+					<__experimentalBlockPatternPicker
+						icon="layout"
+						label={ __( 'Choose pattern' ) }
+						instructions={ __( 'Select a pattern to start with.' ) }
+						patterns={ TEMPLATE_OPTIONS }
+						// onSelect={ ( nextPattern = defaultPattern ) => {
+						// 	if ( nextPattern.attributes ) {
+						// 		props.setAttributes( nextPattern.attributes );
+						// 	}
+						// 	if ( nextPattern.innerBlocks ) {
+						// 		replaceInnerBlocks(
+						// 			props.clientId,
+						// 			createBlocksFromInnerBlocksTemplate( nextPattern.innerBlocks )
+						// 		);
+						// 	}
+						// } }
+						onSelect={ ( chosenTemplate ) => {
+							console.log( chosenTemplate );
+							if ( chosenTemplate === undefined ) {
+								chosenTemplate = TEMPLATE_OPTIONS[ 0 ].template;
+							}
+							this.setTemplate( chosenTemplate );
+						} }
+						allowSkip
+						// https://github.com/WordPress/gutenberg/pull/18283/files
+					/>
 				</div>
 			</Fragment>
 		);
@@ -441,4 +472,16 @@ const applyWithSelect = withSelect( ( select, props ) => {
 	};
 } );
 
-export default compose( applyWithSelect )( FormEdit );
+// const applyUseSelect = useSelect( ( select, props ) => {
+// 	const { clientId, name } = props;
+// 	const {	__experimentalGetBlockPatterns,	getBlockType, __experimentalGetDefaultBlockPattern } = select( 'core/blocks' );
+
+// 	return {
+// 		blockType: getBlockType( name ),
+// 		defaultPattern: __experimentalGetDefaultBlockPattern( name ),
+// 		hasInnerBlocks: select( 'core/block-editor' ).getBlocks( clientId ).length > 0,
+// 		patterns: __experimentalGetBlockPatterns( name ),
+// 	};
+// } );
+
+export default compose( [ applyWithSelect ] )( FormEdit );
